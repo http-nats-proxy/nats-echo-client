@@ -1,0 +1,43 @@
+name: Build Go package
+
+on: [push]
+
+env:
+  REPO: ${{ github.repository }}
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Build
+        run: go build
+      - name: Test
+        run: go test -v ./... -json > TestResults.jsonl
+      - name: Upload Go test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: Go-results
+          path: TestResults.jsonl
+
+
+      - name: Build
+        run: |
+          mkdir -p target/bin
+          go build -ldflags '-s'  -o 'target/bin' -o $REPO -v ./...
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/bin/${{ github.repository }}
